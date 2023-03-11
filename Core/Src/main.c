@@ -69,6 +69,19 @@ void set_PWM_duty(TIM_HandleTypeDef *htim, uint32_t Channel,uint8_t degree){
 	uint32_t count = ((max-min)/UINT8_MAX)*degree +min;
 	__HAL_TIM_SET_COMPARE(htim, Channel, count);
 }
+void set_PWM_dutys(uint8_t degrees[]){
+	set_PWM_duty(&htim1, TIM_CHANNEL_1, degrees[0]);
+	set_PWM_duty(&htim1, TIM_CHANNEL_2, degrees[1]);
+	set_PWM_duty(&htim1, TIM_CHANNEL_3, degrees[2]);
+	set_PWM_duty(&htim1, TIM_CHANNEL_4, UINT8_MAX - degrees[3]);
+
+	set_PWM_duty(&htim3, TIM_CHANNEL_1, degrees[4]);
+	set_PWM_duty(&htim3, TIM_CHANNEL_2, UINT8_MAX - degrees[5]);
+	set_PWM_duty(&htim3, TIM_CHANNEL_3, degrees[6]);
+	set_PWM_duty(&htim3, TIM_CHANNEL_4, degrees[7]);
+
+	HAL_UART_Transmit(&huart2, degrees, 8, 0xFFFF);
+}
 void PWM_Start(TIM_HandleTypeDef *htim, uint32_t Channel){
 	if(HAL_TIM_PWM_Start(htim, Channel)!=HAL_OK){
 		Error_Handler();
@@ -124,24 +137,27 @@ int main(void)
   PWM_Start(&htim3, TIM_CHANNEL_3);
   PWM_Start(&htim3, TIM_CHANNEL_4);
 
-  uint8_t receive_data[8];
+  uint8_t receive_data[8]={0};
+  set_PWM_dutys(receive_data);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  uint8_t index = 0;
+  uint8_t data[10];
   while (1)
   {
-	  HAL_UART_Transmit(&huart2,(uint8_t *)"Hello\r\n", 7, 0xFFFF);
-	  HAL_UART_Receive(&huart2, receive_data, 8, 0xFFFF);
-	  set_PWM_duty(&htim1, TIM_CHANNEL_1, receive_data[0]);
-	  set_PWM_duty(&htim1, TIM_CHANNEL_2, receive_data[1]);
-	  set_PWM_duty(&htim1, TIM_CHANNEL_3, receive_data[2]);
-	  set_PWM_duty(&htim1, TIM_CHANNEL_4, receive_data[3]);
+	  uint8_t d;
+	  HAL_UART_Receive(&huart2, &d, 1, 0xFFFF);
+	  index++;
+	  if(d==0){
+		  data[index] = d;
+		  if(index==9) set_PWM_dutys(data);
+		  index = 0;
 
-	  set_PWM_duty(&htim3, TIM_CHANNEL_1, receive_data[4]);
-	  set_PWM_duty(&htim3, TIM_CHANNEL_2, receive_data[5]);
-	  set_PWM_duty(&htim3, TIM_CHANNEL_3, receive_data[6]);
-	  set_PWM_duty(&htim3, TIM_CHANNEL_4, receive_data[7]);
+	  }
+	  if(index >=9)index = 0;
+
 //	  for(uint8_t i =0;i<UINT8_MAX;i++){
 //		  set_PWM_duty(&htim1, TIM_CHANNEL_1, i);
 //		  HAL_Delay(30);
